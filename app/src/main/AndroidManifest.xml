@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.azuresamples.msalandroidapp">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -38,8 +37,8 @@
                     note that the leading "/" is required for android:path
                 -->
                 <data
-                    android:host="com.azuresamples.msalandroidapp"
-                    android:path="/1wIqXSqBj7w+h11ZifsnqwgyKrY="
+                    android:host="com.myradar.android"
+                    android:path="/URKPrDTU8V1MeUOH4mnP2s1KgtM="
                     android:scheme="msauth" />
             </intent-filter>
         </activity>

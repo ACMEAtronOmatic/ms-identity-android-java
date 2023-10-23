@@ -86,6 +86,7 @@ android {
             setIgnore(true);
         }
     }
+    namespace 'com.azuresamples.msalandroidapp'
 }
 
 dependencies {
