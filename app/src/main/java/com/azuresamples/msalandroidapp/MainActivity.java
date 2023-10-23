@@ -76,7 +76,7 @@ public class MainActivity extends AppCompatActivity
 
         //Set default fragment
         navigationView.setCheckedItem(R.id.nav_single_account);
-        setCurrentFragment(AppFragment.SingleAccount);
+        setCurrentFragment(AppFragment.B2C);
     }
 
     @Override

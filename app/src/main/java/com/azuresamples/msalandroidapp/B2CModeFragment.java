@@ -37,6 +37,15 @@ import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.DefaultRetryPolicy;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonArrayRequest;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
 import com.microsoft.identity.client.AcquireTokenParameters;
 import com.microsoft.identity.client.AuthenticationCallback;
 import com.microsoft.identity.client.IAccount;
@@ -51,14 +60,19 @@ import com.microsoft.identity.client.exception.MsalException;
 import com.microsoft.identity.client.exception.MsalServiceException;
 import com.microsoft.identity.client.exception.MsalUiRequiredException;
 
+import org.json.JSONObject;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Implementation sample for 'B2C' mode.
  */
 public class B2CModeFragment extends Fragment {
     private static final String TAG = B2CModeFragment.class.getSimpleName();
+    private static final String LICENSES_API_URL = "https://licenses.acmeaom.com/v1/licenses";
 
     /* UI & Debugging Variables */
     Button removeAccountButton;
@@ -214,6 +228,46 @@ public class B2CModeFragment extends Fragment {
         });
     }
 
+
+    private void getLicenses(@NonNull final IAuthenticationResult result) {
+        RequestQueue queue = Volley.newRequestQueue(getContext());
+        JSONObject parameters = new JSONObject();
+
+        JsonArrayRequest request = new JsonArrayRequest(
+                Request.Method.GET,
+                LICENSES_API_URL,
+                null,
+                response -> {
+                    // Send to UI
+                    Log.d(TAG, "Success from API call.");
+
+                    final String output =
+                            "\n\nLicenses for the signed-in user :\n" +
+                            response.toString();
+                    logTextView.append(output);
+                },
+                error -> {
+                    // Error hitting API
+                    Log.d(TAG, "Error getting licenses. " + error.getMessage());
+                }) {
+                    @Override
+                    public Map<String, String> getHeaders() throws AuthFailureError {
+                        Map<String, String> headers = new HashMap<>();
+
+                        headers.put("Authorization", "Bearer " + result.getAccessToken());
+                        return headers;
+                    }
+        };
+
+        request.setRetryPolicy(new DefaultRetryPolicy(
+                3000,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
+        ));
+
+        queue.add(request);
+    }
+
     /**
      * Callback used in for silent acquireToken calls.
      */
@@ -226,6 +280,7 @@ public class B2CModeFragment extends Fragment {
 
                 /* Successfully got a token. */
                 displayResult(authenticationResult);
+                getLicenses(authenticationResult);
             }
 
             @Override
@@ -263,6 +318,8 @@ public class B2CModeFragment extends Fragment {
 
                 /* Reload account asynchronously to get the up-to-date list. */
                 loadAccounts();
+
+                getLicenses(authenticationResult);
             }
 
             @Override
