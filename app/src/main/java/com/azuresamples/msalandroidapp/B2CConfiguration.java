@@ -62,7 +62,8 @@ public class B2CConfiguration {
      */
     public final static String[] Policies = {
             "B2C_1_Licenses_SignUpSignIn",
-            "B2C_1_Licenses_PasswordReset"
+            "B2C_1_Licenses_PasswordReset",
+            "B2C_1_Licenses_EditProfile"
     };
 
     /**
