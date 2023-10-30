@@ -229,9 +229,13 @@ public class B2CModeFragment extends Fragment {
     }
 
 
+    /**
+     * Example of hitting one of the API endpoints. This is just test code,
+     * not suitable for production and not intended to be used as a reference
+     * or suggestion of usage.
+    */
     private void getLicenses(@NonNull final IAuthenticationResult result) {
         RequestQueue queue = Volley.newRequestQueue(getContext());
-        JSONObject parameters = new JSONObject();
 
         JsonArrayRequest request = new JsonArrayRequest(
                 Request.Method.GET,
@@ -259,6 +263,8 @@ public class B2CModeFragment extends Fragment {
                     }
         };
 
+        // For testing we don't really do retries. In production, the policy should
+        // enforce exponential backoff (e.g. by using a suitable backoff multiplier.)
         request.setRetryPolicy(new DefaultRetryPolicy(
                 3000,
                 DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
