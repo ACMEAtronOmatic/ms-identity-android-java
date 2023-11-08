@@ -26,6 +26,7 @@ package com.azuresamples.msalandroidapp;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import android.util.Log;
@@ -41,8 +42,7 @@ import com.android.volley.AuthFailureError;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
+import com.android.volley.toolbox.DiskBasedCache;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
@@ -60,19 +60,36 @@ import com.microsoft.identity.client.exception.MsalException;
 import com.microsoft.identity.client.exception.MsalServiceException;
 import com.microsoft.identity.client.exception.MsalUiRequiredException;
 
+import org.json.JSONException;
 import org.json.JSONObject;
+import org.unbrokendome.base62.Base62;
 
+import java.nio.ByteBuffer;
+import java.nio.LongBuffer;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 
 /**
  * Implementation sample for 'B2C' mode.
  */
 public class B2CModeFragment extends Fragment {
     private static final String TAG = B2CModeFragment.class.getSimpleName();
-    private static final String LICENSES_API_URL = "https://licenses.acmeaom.com/v1/licenses";
+    private static final String GET_LICENSES_API_URL = "https://licenses.acmeaom.com/v1/licenses";
+    private static final String REGISTER_INSTALLS_API_URL = "https://installs.acmeaom.com/google/v1/installs";
+
+    // This key is for the example only and will be deleted once the system is in production.
+    private static final String REGISTER_INSTALLS_API_KEY = "U2uGxAalatnyClDazRCcLccS3I3s6bfTCDaDxjCSFC96AzFuBwhR0A==";
+
+    private RequestQueue requestQueue;
 
     /* UI & Debugging Variables */
     Button removeAccountButton;
@@ -87,6 +104,14 @@ public class B2CModeFragment extends Fragment {
 
     /* Azure AD Variables */
     private IMultipleAccountPublicClientApplication b2cApp;
+
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        requestQueue = Volley.newRequestQueue(getContext());
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -235,11 +260,11 @@ public class B2CModeFragment extends Fragment {
      * or suggestion of usage.
     */
     private void getLicenses(@NonNull final IAuthenticationResult result) {
-        RequestQueue queue = Volley.newRequestQueue(getContext());
+        logTextView.append("\nRetrieving available licenses for user...");
 
         JsonArrayRequest request = new JsonArrayRequest(
                 Request.Method.GET,
-                LICENSES_API_URL,
+                GET_LICENSES_API_URL,
                 null,
                 response -> {
                     // Send to UI
@@ -271,7 +296,84 @@ public class B2CModeFragment extends Fragment {
                 DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
         ));
 
-        queue.add(request);
+        requestQueue.add(request);
+    }
+
+
+    private void registerInstall(@NonNull final IAuthenticationResult result) {
+        logTextView.append("\nRegistering install for user...");
+
+        // Build body by hand for simplicity
+        JSONObject registration = new JSONObject();
+        try {
+            registration.put("vid", "44444444444444444444444444444444");
+            registration.put("iid", UUID.randomUUID().toString().replaceAll("-", ""));
+            registration.put("cid", generateCID());
+            registration.put("aid", "" );
+
+            // ID includes sign-in flow, we only want OID. Also API wants OID to be only alphanumeric.
+            registration.put("oid",
+                    result.getAccount().getId().replaceAll("-", "").substring(0, 32));
+
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+
+        JsonObjectRequest request = new JsonObjectRequest(
+                Request.Method.PUT,
+                REGISTER_INSTALLS_API_URL,
+                registration,
+                response -> {
+                    // Send to UI
+                    Log.d(TAG, "Success from API call.");
+
+                    final String output =
+                            "\n\nRegistration response :\n" +
+                                    response.toString();
+                    logTextView.append(output);
+                },
+                error -> {
+                    // Error hitting API
+                    Log.d(TAG, "Error getting licenses. " + error.getMessage());
+                }) {
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                Map<String, String> headers = new HashMap<>();
+
+                headers.put("x-functions-key", REGISTER_INSTALLS_API_KEY);
+                return headers;
+            }
+        };
+
+        // For testing we don't really do retries. In production, the policy should
+        // enforce exponential backoff (e.g. by using a suitable backoff multiplier.)
+        request.setRetryPolicy(new DefaultRetryPolicy(
+                3000,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
+        ));
+
+        requestQueue.add(request);
+    }
+
+
+    // This is not meant to be a reference or example implementation.
+    // I cobbled it together from the Interwebs. A production-worthy
+    // implementation is likely to be different.
+    private String generateCID() {
+        KeyGenerator keyGen;
+        try {
+            keyGen = KeyGenerator.getInstance("HmacSHA512");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+
+        SecureRandom secureRandom = new SecureRandom();
+        keyGen.init(secureRandom);
+        SecretKey key = keyGen.generateKey();
+
+        // Notion dos mentions Base62, but Base64 is okay too.
+        return Base64.getEncoder().encodeToString(key.getEncoded());
     }
 
     /**
@@ -287,6 +389,7 @@ public class B2CModeFragment extends Fragment {
                 /* Successfully got a token. */
                 displayResult(authenticationResult);
                 getLicenses(authenticationResult);
+                registerInstall(authenticationResult);
             }
 
             @Override
@@ -326,6 +429,7 @@ public class B2CModeFragment extends Fragment {
                 loadAccounts();
 
                 getLicenses(authenticationResult);
+                registerInstall(authenticationResult);
             }
 
             @Override

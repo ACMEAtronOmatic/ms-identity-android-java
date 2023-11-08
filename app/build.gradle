@@ -97,6 +97,8 @@ dependencies {
     implementation "androidx.legacy:legacy-support-v4:$rootProject.ext.legacySupportV4Version"
     implementation 'com.android.volley:volley:1.2.1'
 
+    implementation 'org.unbroken-dome.base62:base62:1.1.0'
+
     if (findProject(':msal') != null) {
         // For developer team only.
         localImplementation project(':msal')
