@@ -340,7 +340,10 @@ public class B2CModeFragment extends Fragment {
             public Map<String, String> getHeaders() throws AuthFailureError {
                 Map<String, String> headers = new HashMap<>();
 
+                // Make-believe values
                 headers.put("x-functions-key", REGISTER_INSTALLS_API_KEY);
+                headers.put("User-Agent", "MyRadar/5151 Android/26");
+
                 return headers;
             }
         };
